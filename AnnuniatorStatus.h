@@ -1,49 +1,88 @@
 #pragma once
+#include <atomic>
 // Data Structure for Status
-struct AnnuniatorStatusItem
-{
-	char name[100];
-	int id;
-	char ip[25];
-	int port;
-	int mode;	// udp or tcp, or serial
-	int timenow;
-	int lasttrouble;
-	int carcountPerHour;
-	char online;
-	char laststatus;
-};
+#include"AnnuniatorCommonDef.h"
+
+
 typedef std::list<AnnuniatorStatusItem> list_StatusAnnuniator;
-class AnnuniatorStatus
+class AnnuniatorDataMgrUnit
+{
+public:
+	AnnuniatorDataMgrUnit();
+	~AnnuniatorDataMgrUnit();
+	// Action, insert, query, delete, params id
+	void insertItem(char* name, int id, char* ip, int port, int mode); // disabled read, new insert will change the POSITION to current
+	void UpdateItemStatus(int id, int status);
+	int getItemById(int id, struct AnnuniatorStatusItem& item);
+	void deleteItem(int id);	// disabled read
+	int queryItem(struct AnnuniatorStatusItem& item);	// disabled read, read and set Next position
+	int getTotalItems(void);
+	void setTime(int id);
+	void clearStatus(int id);
+	int resetParams(void);
+protected:
+	void Clear();
+	void checkEnd(void);
+	void ItemCopy(struct AnnuniatorStatusItem& dstitem, list_StatusAnnuniator::iterator srcitem);
+protected:
+	bool beReadable;
+	bool beCompleted_DataUnit;
+	list_StatusAnnuniator::iterator curPosIt;
+	list_StatusAnnuniator statusList;
+};
+
+class AnnuniatorQueryCmdUnit
+{
+public:
+	AnnuniatorQueryCmdUnit();
+	~AnnuniatorQueryCmdUnit();
+
+	int getCmd(void);
+	int getCmdJustOnce(void);
+	int setNextCmd(int next);
+	void resetCmd() { isCompleted_cmd = false; commandCnt = 0; }
+protected:
+	std::atomic_int commandCnt;
+	unsigned char cmdArray[6];
+	bool isCompleted_cmd;
+private:
+	int maxcmdNums;
+};
+class AnnuniatorStatus:public AnnuniatorDataMgrUnit, public AnnuniatorQueryCmdUnit
 {
 private:
-	static int StatusThreadFunc(void* lparam, int begin);
+	static int StatusThreadFunc(void* lparam);
+	static int StatusThreadMgrFunc(void* lparam);
+public:
+	static std::atomic_int busy_flag;
 public:
 	AnnuniatorStatus();
 	~AnnuniatorStatus();
-	void setStatusData(char* buffer, int length, int id);	// time, trouble, carcount, oprRecord
-	void setStatus(char status, int id);	// from other operation, guard or greenband
-	void setOnOff(char beOnline, int id);	// from other operation
 
-	void insertItem(char* name, int id, char* ip, int port, int mode);
-	void Clear();
-	int getStatusDataAsFmt(int type);
+	//int getStatusDataAsFmt(int type);
 	int StartMonitor(void);
 protected:
-	void getStatusDataAsJson(void);
-	void getStatusDataAsOrg(void);
+	//void getStatusDataAsJson(void);
+	//void getStatusDataAsOrg(void);
 
+	int QueryDataByCmd(unsigned char cmd, AnnuniatorStatusItem &item);
+	//int GetUtcTimeSB4UFmt(char* pszCmdBuf, int maxlen);
+	int ChkNormalACK(char* buf);
+
+	int ConncetAnnuniator(char *ip, int port);
 	void CreateThread(void);
-	void SyncSystemTime();	// 
-	int GetUtcTimeSB4UFmt(int nAddr, char* pszCmdBuf, int maxlen);
-	int SetUtcTimeSB4UFmt(int nAddr, char* pszCmdBuf, int maxlen, CTime tm);
-	void GetAnnuniatorTrouble();
+	void CreateThreadLogic(void);
+	int GetAnnuniatorTime(int idxCli, int id);
+	int SetAnnuniatorTime(int idxCli, int id);
+	int GetUtcTimeSB4UFmt(char* pszCmdBuf, int maxlen);
+	int SetUtcTimeSB4UFmt(char* pszCmdBuf, int maxlen);
 
-	int checkExistById(int id);
-	int deleteById(int id);
-	int insertById(int id);
+	unsigned char GetXOR(const unsigned char* pszBuf, int nDataLenth);
+	int checkTimeBeOK(int year, int month, int day, int hour, int minute, int second);
+	int checkCompleted4Status(void);
 private:
-	list_StatusAnnuniator	statusList;
-	int maxid;
-	int commandCount;
+	bool check_end_once;
+	std::atomic_int thread_count;
 };
+
+

@@ -24,3 +24,5 @@ protected:
 	bool beWriting;
 };
 
+long GetCurrentTimeBySec();
+

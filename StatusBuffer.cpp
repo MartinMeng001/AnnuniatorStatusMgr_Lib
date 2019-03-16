@@ -86,8 +86,8 @@ int StatusBuffer::getStatusById(int id, char* buffer, int len)
 }
 void StatusBuffer::setStatus(int id, char* data, int len)
 {
-	beWriting = true;
 	if (len > MAXLENGTH_SB4U_CMD_STATUS) return;
+	beWriting = true;
 	StatusPackage newdata;
 	memset(newdata.rcvData, 0, sizeof(newdata.rcvData));
 	memcpy(newdata.rcvData, data, len);
